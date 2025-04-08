@@ -50,9 +50,8 @@
 
   <script>
     const eventNames = {
-      "1": "高能警报",
-      "3": "入侵警报",
-      "5": "双倍经验值", "112": "精灵狂热", "207": "入侵警报", "432": "清道夫集群",
+      "1": "高能警报", "3": "入侵警报", "5": "双倍经验值",
+      "112": "精灵狂热", "207": "入侵警报", "432": "清道夫集群",
       "92": "精灵狂热", "177": "清道夫群集", "188": "重启魔宝", "194": "重启采集器",
       "195": "拯救战术猫", "197": "重大研究", "198": "好多嗅探器", "199": "工程师求助",
       "201": "入侵警报", "202": "入侵警报", "203": "入侵警报", "204": "入侵警报",
@@ -63,12 +62,20 @@
     };
 
     const locations = {
-      "5": "神殿村",
-      "6": "青翠废墟",
-      "7": "孽生森林",
-      "26": "精灵洞穴", "27": "城堡墙壁", "28": "召唤广场", "29": "下水道", "30": "腐化村庄",
-      "31": "腐化废墟", "32": "腐化森林", "33": "腐化洞穴", "34": "腐化城堡", "35": "腐化神殿"
+      "5": "神殿村", "6": "青翠废墟", "7": "孽生森林",
+      "26": "精灵洞穴", "27": "城堡墙壁", "28": "召唤广场", "29": "下水道",
+      "30": "腐化村庄", "31": "腐化废墟", "32": "腐化森林",
+      "33": "腐化洞穴", "34": "腐化城堡", "35": "腐化神殿"
     };
+
+    const startTimeCache = new Map();
+    const endTimeCache = new Map();
+
+    function roundToNearest5Min(date) {
+      const ms = 1000 * 60 * 5;
+      const rounded = new Date(Math.round(date.getTime() / ms) * ms);
+      return rounded.toLocaleTimeString('zh-CN', { hour12: false });
+    }
 
     async function fetchEvents() {
       try {
@@ -96,19 +103,25 @@
           const start = serverTime + event.startTime * 1000;
           const end = serverTime + event.endTime * 1000;
 
-          // 移除已结束事件（start == end 表示瞬时或错误数据）
+          const key = event.location + "_" + event.startTime;
+
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+
+          const roundedStartStr = roundToNearest5Min(startDate);
+          const roundedEndStr = roundToNearest5Min(endDate);
+
+          if (!startTimeCache.has(key)) startTimeCache.set(key, roundedStartStr);
+          if (!endTimeCache.has(key)) endTimeCache.set(key, roundedEndStr);
+
           if (now >= start && now <= end && start !== end) {
-            const startStr = new Date(start).toLocaleTimeString('zh-CN', { hour12: false });
-            const endStr = new Date(end).toLocaleTimeString('zh-CN', { hour12: false });
-            if (startStr !== endStr) {
-              currentList.push(event);
-            }
+            currentList.push({ ...event, key });
           } else if (start > now) {
-            upcomingList.push(event);
+            upcomingList.push({ ...event, key });
           }
         });
 
-        const render = (list, container, emptyText) => {
+        const render = (list, container, emptyText, isCurrent = false) => {
           list.sort((a, b) => a.startTime - b.startTime);
           if (list.length === 0) {
             container.innerHTML = `<tr class='empty-row'><td colspan='4'>${emptyText}</td></tr>`;
@@ -124,8 +137,19 @@
             } else if (event.type && eventNames[event.type]) {
               eventName = eventNames[event.type];
             }
-            const startStr = new Date(serverTime + event.startTime * 1000).toLocaleTimeString('zh-CN', { hour12: false });
-            const endStr = new Date(serverTime + event.endTime * 1000).toLocaleTimeString('zh-CN', { hour12: false });
+
+            const endStr = endTimeCache.get(event.key) || "未知时间";
+            let startStr;
+
+            if (isCurrent) {
+              // 用结束时间 - 5分钟 来计算开始时间
+              const endRaw = new Date(serverTime + event.endTime * 1000);
+              const startFromEnd = new Date(endRaw.getTime() - 5 * 60 * 1000);
+              startStr = roundToNearest5Min(startFromEnd);
+            } else {
+              startStr = startTimeCache.get(event.key) || "未知时间";
+            }
+
             const tr = document.createElement("tr");
             const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
             const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
@@ -134,8 +158,8 @@
           });
         };
 
-        render(currentList, currentEvents, '暂无进行中的事件');
-        render(upcomingList, upcomingEvents, '暂无即将开始的事件');
+        render(currentList, currentEvents, '暂无进行中的事件', true);
+        render(upcomingList, upcomingEvents, '暂无即将开始的事件', false);
 
       } catch (err) {
         console.error("获取事件失败：", err);
