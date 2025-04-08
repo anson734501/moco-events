@@ -96,8 +96,13 @@
           const start = serverTime + event.startTime * 1000;
           const end = serverTime + event.endTime * 1000;
 
+          // 移除已结束事件（start == end 表示瞬时或错误数据）
           if (now >= start && now <= end && start !== end) {
-            currentList.push(event);
+            const startStr = new Date(start).toLocaleTimeString('zh-CN', { hour12: false });
+            const endStr = new Date(end).toLocaleTimeString('zh-CN', { hour12: false });
+            if (startStr !== endStr) {
+              currentList.push(event);
+            }
           } else if (start > now) {
             upcomingList.push(event);
           }
