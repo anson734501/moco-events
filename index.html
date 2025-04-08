@@ -15,9 +15,10 @@
   </style>
 </head>
 <body>
-  <h1>Mo.co 实时事件列表 <span id="status" style="color:red; font-size: 16px;"></span></h1>
+  <h1>Mo.co 实时事件列表</h1>
+  <p style="color: #bbb; margin-top: -10px;">如遇页面无数据，请等待即可。</p>
 
-  <h2>🔴 正在进行的事件</h2>
+  <h2>🟢 目前事件</h2>
   <table>
     <thead>
       <tr>
@@ -32,7 +33,7 @@
     </tbody>
   </table>
 
-  <h2>🟡 即将开始的事件</h2>
+  <h2>🟡 即将开始</h2>
   <table>
     <thead>
       <tr>
@@ -76,10 +77,8 @@
           new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
         ]);
         const data = await res.json();
-        if (!Array.isArray(data) || data.length < 2) {
-          document.getElementById('status').textContent = '（数据卡顿，无需刷新，等待即可）';
-          return;
-        }
+        if (!Array.isArray(data) || data.length < 2) return;
+
         const serverTime = data[0];
         const events = data.slice(1);
 
@@ -96,7 +95,8 @@
         events.forEach(event => {
           const start = serverTime + event.startTime * 1000;
           const end = serverTime + event.endTime * 1000;
-          if (now >= start && now <= end) {
+
+          if (now >= start && now <= end && start !== end) {
             currentList.push(event);
           } else if (start > now) {
             upcomingList.push(event);
@@ -123,19 +123,17 @@
             const endStr = new Date(serverTime + event.endTime * 1000).toLocaleTimeString('zh-CN', { hour12: false });
             const tr = document.createElement("tr");
             const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
-const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
-tr.innerHTML = `<td>${mapName}</td>${nameCell}<td>${startStr}</td><td>${endStr}</td>`;
+            const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
+            tr.innerHTML = `<td>${mapName}</td>${nameCell}<td>${startStr}</td><td>${endStr}</td>`;
             container.appendChild(tr);
           });
         };
 
         render(currentList, currentEvents, '暂无进行中的事件');
         render(upcomingList, upcomingEvents, '暂无即将开始的事件');
-        document.getElementById('status').textContent = '';
 
       } catch (err) {
         console.error("获取事件失败：", err);
-        document.getElementById('status').textContent = '（数据卡顿，无需刷新，等待即可）';
       }
     }
 
