@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mo.co 实时事件列表</title>
+  <style>
+    body { background: #1e1e1e; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
+    h1, h2 { color: #fff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; }
+    th, td { padding: 2px 6px; text-align: left; border-bottom: 1px solid #555; }
+    th { background-color: #333; }
+    tr:hover { background-color: #444; }
+    .empty-row { text-align: center; color: #aaa; font-style: italic; padding: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Mo.co 实时事件列表 <span id="status" style="color:red; font-size: 16px;"></span></h1>
+
+  <h2>🔴 正在进行的事件</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>地图名称</th>
+        <th>事件名称</th>
+        <th>开始时间</th>
+        <th>结束时间</th>
+      </tr>
+    </thead>
+    <tbody id="currentEvents">
+      <tr class="empty-row"><td colspan="4">暂无进行中的事件</td></tr>
+    </tbody>
+  </table>
+
+  <h2>🟡 即将开始的事件</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>地图名称</th>
+        <th>事件名称</th>
+        <th>开始时间</th>
+        <th>结束时间</th>
+      </tr>
+    </thead>
+    <tbody id="upcomingEvents">
+      <tr class="empty-row"><td colspan="4">暂无即将开始的事件</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const eventNames = {
+      "1": "高能警报",
+      "3": "入侵警报",
+      "5": "双倍经验值",
+      "92": "精灵狂热（跳舞）", "177": "清道夫群集", "188": "重启魔宝", "194": "重启采集器",
+      "195": "拯救战术猫", "197": "重大研究", "198": "好多嗅探器", "199": "工程师求助",
+      "201": "入侵警报", "202": "入侵警报", "203": "入侵警报", "204": "入侵警报",
+      "206": "入侵警报", "370": "混沌冲击怪", "372": "混沌杂耍怪", "373": "混沌骑士",
+      "433": "混沌狗狗怪", "434": "混沌碎骨怪", "437": "混沌狂怒售", "438": "混沌吹吹怪",
+      "439": "混沌冲锋怪", "440": "混沌长矛跳跳龙",
+      "431": "混沌保险库"
+    };
+
+    const locations = {
+      "5": "神殿村",
+      "6": "青翠废墟",
+      "7": "孽生森林",
+      "26": "精灵洞穴", "27": "城堡墙壁", "28": "召唤广场", "29": "下水道", "30": "腐化村庄",
+      "31": "腐化废墟", "32": "腐化森林", "33": "腐化洞穴", "34": "腐化城堡", "35": "腐化神殿"
+    };
+
+    async function fetchEvents() {
+      try {
+        const res = await Promise.race([
+          fetch('https://sqbwiki.com:9330/'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
+        ]);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length < 2) {
+          document.getElementById('status').textContent = '（数据卡顿，无需刷新，等待即可）';
+          return;
+        }
+        const serverTime = data[0];
+        const events = data.slice(1);
+
+        const currentEvents = document.getElementById("currentEvents");
+        const upcomingEvents = document.getElementById("upcomingEvents");
+        currentEvents.innerHTML = '';
+        upcomingEvents.innerHTML = '';
+
+        const now = serverTime;
+
+        const currentList = [];
+        const upcomingList = [];
+
+        events.forEach(event => {
+          const start = serverTime + event.startTime * 1000;
+          const end = serverTime + event.endTime * 1000;
+          if (now >= start && now <= end) {
+            currentList.push(event);
+          } else if (start > now) {
+            upcomingList.push(event);
+          }
+        });
+
+        const render = (list, container, emptyText) => {
+          list.sort((a, b) => a.startTime - b.startTime);
+          if (list.length === 0) {
+            container.innerHTML = `<tr class='empty-row'><td colspan='4'>${emptyText}</td></tr>`;
+            return;
+          }
+          list.forEach(event => {
+            const locId = event.location.split("-")[1] - 900000;
+            const mapName = locations[locId] || `未知地图(${event.location})`;
+            const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
+            let eventName = "未知事件";
+            if (monsterId !== null) {
+              eventName = eventNames[monsterId] || `未知事件 (${monsterId})`;
+            } else if (event.type && eventNames[event.type]) {
+              eventName = eventNames[event.type];
+            }
+            const startStr = new Date(serverTime + event.startTime * 1000).toLocaleTimeString('zh-CN', { hour12: false });
+            const endStr = new Date(serverTime + event.endTime * 1000).toLocaleTimeString('zh-CN', { hour12: false });
+            const tr = document.createElement("tr");
+            const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
+const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
+tr.innerHTML = `<td>${mapName}</td>${nameCell}<td>${startStr}</td><td>${endStr}</td>`;
+            container.appendChild(tr);
+          });
+        };
+
+        render(currentList, currentEvents, '暂无进行中的事件');
+        render(upcomingList, upcomingEvents, '暂无即将开始的事件');
+        document.getElementById('status').textContent = '';
+
+      } catch (err) {
+        console.error("获取事件失败：", err);
+        document.getElementById('status').textContent = '（数据卡顿，无需刷新，等待即可）';
+      }
+    }
+
+    fetchEvents();
+    setInterval(fetchEvents, 5000);
+  </script>
+</body>
+</html>
