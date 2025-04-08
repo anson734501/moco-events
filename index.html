@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MO.CO 实时事件</title>
   <style>
     body { background: #1e1e1e; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
@@ -16,7 +16,7 @@
 </head>
 <body>
   <h1>MO.CO 实时事件</h1>
-  <p style="color: #bbb; margin-top: -10px;">如遇页面无数据，请等待即可。</p>
+  <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
 
   <h2>🟢 目前事件</h2>
   <table>
@@ -49,6 +49,24 @@
   </table>
 
   <script>
+    // 实时更新时间显示（无“北京时间”文字）
+    function updateBeijingTime() {
+      const now = new Date();
+      const beijingOffset = 8 * 60;
+      const localOffset = now.getTimezoneOffset();
+      const beijingTime = new Date(now.getTime() + (beijingOffset + localOffset) * 60000);
+      const yyyy = beijingTime.getFullYear();
+      const mm = String(beijingTime.getMonth() + 1).padStart(2, '0');
+      const dd = String(beijingTime.getDate()).padStart(2, '0');
+      const hh = String(beijingTime.getHours()).padStart(2, '0');
+      const min = String(beijingTime.getMinutes()).padStart(2, '0');
+      const ss = String(beijingTime.getSeconds()).padStart(2, '0');
+      document.getElementById("timeNow").textContent = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+    }
+    updateBeijingTime();
+    setInterval(updateBeijingTime, 1000);
+
+    // 实时事件逻辑
     const eventNames = {
       "1": "高能警报", "3": "入侵警报", "5": "双倍经验值",
       "112": "精灵狂热", "207": "入侵警报", "432": "清道夫集群",
@@ -102,14 +120,10 @@
         events.forEach(event => {
           const start = serverTime + event.startTime * 1000;
           const end = serverTime + event.endTime * 1000;
-
           const key = event.location + "_" + event.startTime;
 
-          const startDate = new Date(start);
-          const endDate = new Date(end);
-
-          const roundedStartStr = roundToNearest5Min(startDate);
-          const roundedEndStr = roundToNearest5Min(endDate);
+          const roundedStartStr = roundToNearest5Min(new Date(start));
+          const roundedEndStr = roundToNearest5Min(new Date(end));
 
           if (!startTimeCache.has(key)) startTimeCache.set(key, roundedStartStr);
           if (!endTimeCache.has(key)) endTimeCache.set(key, roundedEndStr);
@@ -142,7 +156,6 @@
             let startStr;
 
             if (isCurrent) {
-              // 用结束时间 - 5分钟 来计算开始时间
               const endRaw = new Date(serverTime + event.endTime * 1000);
               const startFromEnd = new Date(endRaw.getTime() - 5 * 60 * 1000);
               startStr = roundToNearest5Min(startFromEnd);
