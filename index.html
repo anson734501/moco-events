@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MO.CO 实时事件</title>
+  <title>MO.CO 实时事件（Firebase 共享缓存）</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <style>
     body { background: #1e1e1e; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
     h1, h2 { color: #fff; }
@@ -20,51 +22,31 @@
 
   <h2>🟢 当前事件</h2>
   <table>
-    <thead>
-      <tr>
-        <th>开始时间</th>
-        <th>地图名称</th>
-        <th>事件名称</th>
-      </tr>
-    </thead>
-    <tbody id="currentEvents">
-      <tr class="empty-row"><td colspan="3">数据获取中……</td></tr>
-    </tbody>
+    <thead><tr><th>开始时间</th><th>地图名称</th><th>事件名称</th></tr></thead>
+    <tbody id="currentEvents"><tr class="empty-row"><td colspan="3">数据获取中……</td></tr></tbody>
   </table>
 
   <h2>🟡 即将开始</h2>
   <table>
-    <thead>
-      <tr>
-        <th>开始时间</th>
-        <th>地图名称</th>
-        <th>事件名称</th>
-      </tr>
-    </thead>
-    <tbody id="upcomingEvents">
-      <tr class="empty-row"><td colspan="3">数据获取中……</td></tr>
-    </tbody>
+    <thead><tr><th>开始时间</th><th>地图名称</th><th>事件名称</th></tr></thead>
+    <tbody id="upcomingEvents"><tr class="empty-row"><td colspan="3">数据获取中……</td></tr></tbody>
   </table>
 
   <script>
-    let serverTime = 0;
-    const CACHE_KEY = 'moco_event_cache';
+    // 初始化 Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTGMl8W8Jd5HuG8RsyWJrNd-KEVjfc-KA",
+      authDomain: "my-realtime-database-cc6b7.firebaseapp.com",
+      databaseURL: "https://my-realtime-database-cc6b7-default-rtdb.firebaseio.com",
+      projectId: "my-realtime-database-cc6b7",
+      storageBucket: "my-realtime-database-cc6b7.firebasestorage.app",
+      messagingSenderId: "825797371760",
+      appId: "1:825797371760:web:7f8d17b9681e51168ed1b5"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref("mocoCache");
 
-    function updateBeijingTime() {
-      const now = new Date();
-      const beijingOffset = 8 * 60;
-      const localOffset = now.getTimezoneOffset();
-      const beijingTime = new Date(now.getTime() + (beijingOffset + localOffset) * 60000);
-      const yyyy = beijingTime.getFullYear();
-      const mm = String(beijingTime.getMonth() + 1).padStart(2, '0');
-      const dd = String(beijingTime.getDate()).padStart(2, '0');
-      const hh = String(beijingTime.getHours()).padStart(2, '0');
-      const min = String(beijingTime.getMinutes()).padStart(2, '0');
-      const ss = String(beijingTime.getSeconds()).padStart(2, '0');
-      document.getElementById("timeNow").textContent = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
-    }
-    updateBeijingTime();
-    setInterval(updateBeijingTime, 1000);
+    let serverTime = 0;
 
     const eventNames = {
       "1": "高能警报", "3": "入侵警报", "5": "双倍经验值", "374": "混沌喷射怪",
@@ -84,6 +66,22 @@
       "30": "腐化村庄", "31": "腐化废墟", "32": "腐化森林",
       "33": "腐化洞穴", "34": "腐化城堡", "35": "腐化神殿"
     };
+
+    function updateBeijingTime() {
+      const now = new Date();
+      const beijingOffset = 8 * 60;
+      const localOffset = now.getTimezoneOffset();
+      const beijingTime = new Date(now.getTime() + (beijingOffset + localOffset) * 60000);
+      const yyyy = beijingTime.getFullYear();
+      const mm = String(beijingTime.getMonth() + 1).padStart(2, '0');
+      const dd = String(beijingTime.getDate()).padStart(2, '0');
+      const hh = String(beijingTime.getHours()).padStart(2, '0');
+      const min = String(beijingTime.getMinutes()).padStart(2, '0');
+      const ss = String(beijingTime.getSeconds()).padStart(2, '0');
+      document.getElementById("timeNow").textContent = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+    }
+    updateBeijingTime();
+    setInterval(updateBeijingTime, 1000);
 
     function roundToNearest5Min(date) {
       const ms = 1000 * 60 * 5;
@@ -139,41 +137,11 @@
         });
 
         const spacer = document.createElement("tr");
-        spacer.innerHTML = `<td colspan="3" style="height:10px; border-bottom: none;"></td>`;
+        spacer.innerHTML = `<td colspan="3" style="height:10px; border-bottom:none;"></td>`;
         container.appendChild(spacer);
       });
 
       return returnLoaded ? true : undefined;
-    }
-
-    function loadFromCache() {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return false;
-      try {
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed) || parsed.length < 2) return false;
-        serverTime = parsed[0];
-        const events = parsed.slice(1);
-        const now = serverTime;
-        const currentList = [];
-        const upcomingList = [];
-
-        events.forEach(event => {
-          const start = serverTime + event.startTime * 1000;
-          const end = serverTime + event.endTime * 1000;
-          if (now >= start && now <= end && start !== end) {
-            currentList.push(event);
-          } else if (start > now) {
-            upcomingList.push(event);
-          }
-        });
-
-        render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
-        render(currentList, document.getElementById("currentEvents"), currentList.length === 0 ? '暂无进行中的事件' : '', true);
-        return true;
-      } catch {
-        return false;
-      }
     }
 
     async function fetchEvents() {
@@ -183,38 +151,47 @@
           new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
         ]);
         const data = await res.json();
-        if (!Array.isArray(data) || data.length < 2) throw new Error('数据格式错误');
+        if (!Array.isArray(data) || data.length < 2) throw new Error("格式错误");
 
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
         serverTime = data[0];
-
         const events = data.slice(1);
-        const now = serverTime;
 
-        const currentList = [];
-        const upcomingList = [];
+        // 写入 Firebase 缓存
+        await dbRef.set({ serverTime, events });
 
-        events.forEach(event => {
-          const start = serverTime + event.startTime * 1000;
-          const end = serverTime + event.endTime * 1000;
-          if (now >= start && now <= end && start !== end) {
-            currentList.push(event);
-          } else if (start > now) {
-            upcomingList.push(event);
+        renderFromData(serverTime, events);
+      } catch (e) {
+        // 读取 Firebase 缓存
+        dbRef.once("value").then(snapshot => {
+          const cached = snapshot.val();
+          if (cached) {
+            serverTime = cached.serverTime;
+            renderFromData(serverTime, cached.events);
           }
         });
-
-        const upcomingLoaded = render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
-        const currentEmptyText = upcomingLoaded && currentList.length === 0 ? '暂无进行中的事件' : '数据获取中……';
-        render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
-
-      } catch (err) {
-        console.error("获取事件失败，使用缓存数据：", err);
-        loadFromCache();
       }
     }
 
-    loadFromCache();     // 页面初次加载尝试使用缓存
+    function renderFromData(serverTime, events) {
+      const now = serverTime;
+      const currentList = [];
+      const upcomingList = [];
+
+      events.forEach(event => {
+        const start = serverTime + event.startTime * 1000;
+        const end = serverTime + event.endTime * 1000;
+        if (now >= start && now <= end && start !== end) {
+          currentList.push(event);
+        } else if (start > now) {
+          upcomingList.push(event);
+        }
+      });
+
+      const upcomingLoaded = render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
+      const currentEmptyText = upcomingLoaded && currentList.length === 0 ? '暂无进行中的事件' : '数据获取中……';
+      render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
+    }
+
     fetchEvents();
     setInterval(fetchEvents, 5000);
   </script>
