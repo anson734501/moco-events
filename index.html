@@ -22,14 +22,13 @@
   <table>
     <thead>
       <tr>
+        <th>开始时间</th>
         <th>地图名称</th>
         <th>事件名称</th>
-        <th>开始时间</th>
-        <th>结束时间</th>
       </tr>
     </thead>
     <tbody id="currentEvents">
-      <tr class="empty-row"><td colspan="4">暂无进行中的事件</td></tr>
+      <tr class="empty-row"><td colspan="3">暂无进行中的事件</td></tr>
     </tbody>
   </table>
 
@@ -37,19 +36,17 @@
   <table>
     <thead>
       <tr>
+        <th>开始时间</th>
         <th>地图名称</th>
         <th>事件名称</th>
-        <th>开始时间</th>
-        <th>结束时间</th>
       </tr>
     </thead>
     <tbody id="upcomingEvents">
-      <tr class="empty-row"><td colspan="4">暂无即将开始的事件</td></tr>
+      <tr class="empty-row"><td colspan="3">暂无即将开始的事件</td></tr>
     </tbody>
   </table>
 
   <script>
-    // 实时更新时间显示（无“北京时间”文字）
     function updateBeijingTime() {
       const now = new Date();
       const beijingOffset = 8 * 60;
@@ -66,7 +63,6 @@
     updateBeijingTime();
     setInterval(updateBeijingTime, 1000);
 
-    // 实时事件逻辑
     const eventNames = {
       "1": "高能警报", "3": "入侵警报", "5": "双倍经验值", "374": "混沌喷射怪",
       "112": "精灵狂热(强壮)", "207": "入侵警报", "432": "混沌清道夫", "435": "混沌花朵",
@@ -86,13 +82,13 @@
       "33": "腐化洞穴", "34": "腐化城堡", "35": "腐化神殿"
     };
 
-    const startTimeCache = new Map();
-    const endTimeCache = new Map();
-
     function roundToNearest5Min(date) {
       const ms = 1000 * 60 * 5;
       const rounded = new Date(Math.round(date.getTime() / ms) * ms);
-      return rounded.toLocaleTimeString('zh-CN', { hour12: false });
+      return {
+        label: rounded.toLocaleTimeString('zh-CN', { hour12: false }),
+        timestamp: rounded.getTime()
+      };
     }
 
     async function fetchEvents() {
@@ -106,12 +102,6 @@
 
         const serverTime = data[0];
         const events = data.slice(1);
-
-        const currentEvents = document.getElementById("currentEvents");
-        const upcomingEvents = document.getElementById("upcomingEvents");
-        currentEvents.innerHTML = '';
-        upcomingEvents.innerHTML = '';
-
         const now = serverTime;
 
         const currentList = [];
@@ -120,59 +110,66 @@
         events.forEach(event => {
           const start = serverTime + event.startTime * 1000;
           const end = serverTime + event.endTime * 1000;
-          const key = event.location + "_" + event.startTime;
-
-          const roundedStartStr = roundToNearest5Min(new Date(start));
-          const roundedEndStr = roundToNearest5Min(new Date(end));
-
-          if (!startTimeCache.has(key)) startTimeCache.set(key, roundedStartStr);
-          if (!endTimeCache.has(key)) endTimeCache.set(key, roundedEndStr);
-
           if (now >= start && now <= end && start !== end) {
-            currentList.push({ ...event, key });
+            currentList.push(event);
           } else if (start > now) {
-            upcomingList.push({ ...event, key });
+            upcomingList.push(event);
           }
         });
 
-        const render = (list, container, emptyText, isCurrent = false) => {
-          list.sort((a, b) => a.startTime - b.startTime);
+        function render(list, container, emptyText, isCurrent = false) {
+          container.innerHTML = '';
           if (list.length === 0) {
-            container.innerHTML = `<tr class='empty-row'><td colspan='4'>${emptyText}</td></tr>`;
+            container.innerHTML = `<tr class='empty-row'><td colspan='3'>${emptyText}</td></tr>`;
             return;
           }
+
+          const grouped = [];
+
           list.forEach(event => {
-            const locId = event.location.split("-")[1] - 900000;
-            const mapName = locations[locId] || `未知地图(${event.location})`;
-            const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
-            let eventName = "未知事件";
-            if (monsterId !== null) {
-              eventName = eventNames[monsterId] || `未知事件 (${monsterId})`;
-            } else if (event.type && eventNames[event.type]) {
-              eventName = eventNames[event.type];
+            const rawTime = isCurrent
+              ? new Date(serverTime + event.endTime * 1000 - 5 * 60 * 1000)
+              : new Date(serverTime + event.startTime * 1000);
+            const rounded = roundToNearest5Min(rawTime);
+            let group = grouped.find(g => g.timestamp === rounded.timestamp);
+            if (!group) {
+              group = { timestamp: rounded.timestamp, label: rounded.label, events: [] };
+              grouped.push(group);
             }
-
-            const endStr = endTimeCache.get(event.key) || "未知时间";
-            let startStr;
-
-            if (isCurrent) {
-              const endRaw = new Date(serverTime + event.endTime * 1000);
-              const startFromEnd = new Date(endRaw.getTime() - 5 * 60 * 1000);
-              startStr = roundToNearest5Min(startFromEnd);
-            } else {
-              startStr = startTimeCache.get(event.key) || "未知时间";
-            }
-
-            const tr = document.createElement("tr");
-            const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
-            const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
-            tr.innerHTML = `<td>${mapName}</td>${nameCell}<td>${startStr}</td><td>${endStr}</td>`;
-            container.appendChild(tr);
+            group.events.push(event);
           });
-        };
 
-        render(currentList, currentEvents, '暂无进行中的事件', true);
-        render(upcomingList, upcomingEvents, '暂无即将开始的事件', false);
+          grouped.sort((a, b) => a.timestamp - b.timestamp); // 从近到远
+
+          grouped.forEach(group => {
+            group.events.forEach((event, idx) => {
+              const locId = event.location.split("-")[1] - 900000;
+              const mapName = locations[locId] || `未知地图(${event.location})`;
+              const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
+              let eventName = "未知事件";
+              if (monsterId !== null) {
+                eventName = eventNames[monsterId] || `未知事件 (${monsterId})`;
+              } else if (event.type && eventNames[event.type]) {
+                eventName = eventNames[event.type];
+              }
+
+              const tr = document.createElement("tr");
+              const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
+              const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
+              const timeCell = idx === 0 ? `<td>${group.label}</td>` : `<td></td>`;
+              tr.innerHTML = `${timeCell}<td>${mapName}</td>${nameCell}`;
+              container.appendChild(tr);
+            });
+
+            // 插入空行
+            const spacer = document.createElement("tr");
+            spacer.innerHTML = `<td colspan="3" style="height:10px;"></td>`;
+            container.appendChild(spacer);
+          });
+        }
+
+        render(currentList, document.getElementById("currentEvents"), '暂无进行中的事件', true);
+        render(upcomingList, document.getElementById("upcomingEvents"), '暂无即将开始的事件', false);
 
       } catch (err) {
         console.error("获取事件失败：", err);
