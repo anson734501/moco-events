@@ -22,4 +22,4 @@ jobs:
         run: npm install node-fetch firebase-admin
 
       - name: Run update script
-        run: node .github/scripts/update-cache.js
+        run: node update-cache.js
