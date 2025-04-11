@@ -18,7 +18,7 @@
   <h1>MO.CO 实时事件</h1>
   <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
 
-  <h2>🟢 目前事件</h2>
+  <h2>🟢 当前事件</h2>
   <table>
     <thead>
       <tr>
@@ -28,7 +28,7 @@
       </tr>
     </thead>
     <tbody id="currentEvents">
-      <tr class="empty-row"><td colspan="3">暂无进行中的事件</td></tr>
+      <tr class="empty-row"><td colspan="3">数据获取中……</td></tr>
     </tbody>
   </table>
 
@@ -42,11 +42,14 @@
       </tr>
     </thead>
     <tbody id="upcomingEvents">
-      <tr class="empty-row"><td colspan="3">暂无即将开始的事件</td></tr>
+      <tr class="empty-row"><td colspan="3">数据获取中……</td></tr>
     </tbody>
   </table>
 
   <script>
+    // 全局 serverTime
+    let serverTime = 0;
+
     function updateBeijingTime() {
       const now = new Date();
       const beijingOffset = 8 * 60;
@@ -98,9 +101,9 @@
           new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
         ]);
         const data = await res.json();
-        if (!Array.isArray(data) || data.length < 2) return;
+        if (!Array.isArray(data) || data.length < 2) throw new Error('数据格式错误');
 
-        const serverTime = data[0];
+        serverTime = data[0];
         const events = data.slice(1);
         const now = serverTime;
 
@@ -117,63 +120,67 @@
           }
         });
 
-        function render(list, container, emptyText, isCurrent = false) {
-          container.innerHTML = '';
-          if (list.length === 0) {
-            container.innerHTML = `<tr class='empty-row'><td colspan='3'>${emptyText}</td></tr>`;
-            return;
-          }
-
-          const grouped = [];
-
-          list.forEach(event => {
-            const rawTime = isCurrent
-              ? new Date(serverTime + event.endTime * 1000 - 5 * 60 * 1000)
-              : new Date(serverTime + event.startTime * 1000);
-            const rounded = roundToNearest5Min(rawTime);
-            let group = grouped.find(g => g.timestamp === rounded.timestamp);
-            if (!group) {
-              group = { timestamp: rounded.timestamp, label: rounded.label, events: [] };
-              grouped.push(group);
-            }
-            group.events.push(event);
-          });
-
-          grouped.sort((a, b) => a.timestamp - b.timestamp); // 从近到远
-
-          grouped.forEach(group => {
-            group.events.forEach((event, idx) => {
-              const locId = event.location.split("-")[1] - 900000;
-              const mapName = locations[locId] || `未知地图(${event.location})`;
-              const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
-              let eventName = "未知事件";
-              if (monsterId !== null) {
-                eventName = eventNames[monsterId] || `未知事件 (${monsterId})`;
-              } else if (event.type && eventNames[event.type]) {
-                eventName = eventNames[event.type];
-              }
-
-              const tr = document.createElement("tr");
-              const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
-              const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
-              const timeCell = idx === 0 ? `<td>${group.label}</td>` : `<td></td>`;
-              tr.innerHTML = `${timeCell}<td>${mapName}</td>${nameCell}`;
-              container.appendChild(tr);
-            });
-
-            // 插入空行
-            const spacer = document.createElement("tr");
-            spacer.innerHTML = `<td colspan="3" style="height:10px;"></td>`;
-            container.appendChild(spacer);
-          });
-        }
-
-        render(currentList, document.getElementById("currentEvents"), '暂无进行中的事件', true);
-        render(upcomingList, document.getElementById("upcomingEvents"), '暂无即将开始的事件', false);
+        const upcomingLoaded = render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
+        const currentEmptyText = upcomingLoaded && currentList.length === 0 ? '暂无进行中的事件' : '数据获取中……';
+        render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
 
       } catch (err) {
         console.error("获取事件失败：", err);
+        document.getElementById("currentEvents").innerHTML = `<tr class='empty-row'><td colspan="3">数据获取中……</td></tr>`;
+        document.getElementById("upcomingEvents").innerHTML = `<tr class='empty-row'><td colspan="3">数据获取中……</td></tr>`;
       }
+    }
+
+    function render(list, container, emptyText, isCurrent = false, returnLoaded = false) {
+      container.innerHTML = '';
+      if (list.length === 0) {
+        container.innerHTML = `<tr class='empty-row'><td colspan="3">${emptyText}</td></tr>`;
+        return returnLoaded ? false : undefined;
+      }
+
+      const grouped = [];
+
+      list.forEach(event => {
+        const rawTime = isCurrent
+          ? new Date(serverTime + event.endTime * 1000 - 5 * 60 * 1000)
+          : new Date(serverTime + event.startTime * 1000);
+        const rounded = roundToNearest5Min(rawTime);
+        let group = grouped.find(g => g.timestamp === rounded.timestamp);
+        if (!group) {
+          group = { timestamp: rounded.timestamp, label: rounded.label, events: [] };
+          grouped.push(group);
+        }
+        group.events.push(event);
+      });
+
+      grouped.sort((a, b) => a.timestamp - b.timestamp);
+
+      grouped.forEach(group => {
+        group.events.forEach((event, idx) => {
+          const locId = event.location.split("-")[1] - 900000;
+          const mapName = locations[locId] || `未知地图(${event.location})`;
+          const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
+          let eventName = "未知事件";
+          if (monsterId !== null) {
+            eventName = eventNames[monsterId] || `未知事件 (${monsterId})`;
+          } else if (event.type && eventNames[event.type]) {
+            eventName = eventNames[event.type];
+          }
+
+          const tr = document.createElement("tr");
+          const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
+          const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
+          const timeCell = idx === 0 ? `<td>${group.label}</td>` : `<td></td>`;
+          tr.innerHTML = `${timeCell}<td>${mapName}</td>${nameCell}`;
+          container.appendChild(tr);
+        });
+
+        const spacer = document.createElement("tr");
+        spacer.innerHTML = `<td colspan="3" style="height:10px;"></td>`;
+        container.appendChild(spacer);
+      });
+
+      return returnLoaded ? true : undefined;
     }
 
     fetchEvents();
