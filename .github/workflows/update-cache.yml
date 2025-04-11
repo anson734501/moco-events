@@ -2,7 +2,7 @@ name: Update Firebase Cache
 
 on:
   schedule:
-    - cron: '0 * * * *' # 每小时执行一次，你可根据需要调整
+    - cron: '0 * * * *'  # 每小时整点运行一次
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,10 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install firebase-admin node-fetch
+
+      - name: List current directory for debug
+        run: ls -R
 
       - name: Run update script
-        run: node .github/scripts/update-cache.js
+        run: node ./.github/scripts/update-cache.js
