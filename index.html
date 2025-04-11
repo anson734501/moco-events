@@ -47,8 +47,8 @@
   </table>
 
   <script>
-    // 全局 serverTime
     let serverTime = 0;
+    const CACHE_KEY = 'moco_event_cache';
 
     function updateBeijingTime() {
       const now = new Date();
@@ -92,43 +92,6 @@
         label: rounded.toLocaleTimeString('zh-CN', { hour12: false }),
         timestamp: rounded.getTime()
       };
-    }
-
-    async function fetchEvents() {
-      try {
-        const res = await Promise.race([
-          fetch('https://sqbwiki.com:9330/'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
-        ]);
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length < 2) throw new Error('数据格式错误');
-
-        serverTime = data[0];
-        const events = data.slice(1);
-        const now = serverTime;
-
-        const currentList = [];
-        const upcomingList = [];
-
-        events.forEach(event => {
-          const start = serverTime + event.startTime * 1000;
-          const end = serverTime + event.endTime * 1000;
-          if (now >= start && now <= end && start !== end) {
-            currentList.push(event);
-          } else if (start > now) {
-            upcomingList.push(event);
-          }
-        });
-
-        const upcomingLoaded = render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
-        const currentEmptyText = upcomingLoaded && currentList.length === 0 ? '暂无进行中的事件' : '数据获取中……';
-        render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
-
-      } catch (err) {
-        console.error("获取事件失败：", err);
-        document.getElementById("currentEvents").innerHTML = `<tr class='empty-row'><td colspan="3">数据获取中……</td></tr>`;
-        document.getElementById("upcomingEvents").innerHTML = `<tr class='empty-row'><td colspan="3">数据获取中……</td></tr>`;
-      }
     }
 
     function render(list, container, emptyText, isCurrent = false, returnLoaded = false) {
@@ -176,13 +139,82 @@
         });
 
         const spacer = document.createElement("tr");
-        spacer.innerHTML = `<td colspan="3" style="height:10px;"></td>`;
+        spacer.innerHTML = `<td colspan="3" style="height:10px; border-bottom: none;"></td>`;
         container.appendChild(spacer);
       });
 
       return returnLoaded ? true : undefined;
     }
 
+    function loadFromCache() {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return false;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || parsed.length < 2) return false;
+        serverTime = parsed[0];
+        const events = parsed.slice(1);
+        const now = serverTime;
+        const currentList = [];
+        const upcomingList = [];
+
+        events.forEach(event => {
+          const start = serverTime + event.startTime * 1000;
+          const end = serverTime + event.endTime * 1000;
+          if (now >= start && now <= end && start !== end) {
+            currentList.push(event);
+          } else if (start > now) {
+            upcomingList.push(event);
+          }
+        });
+
+        render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
+        render(currentList, document.getElementById("currentEvents"), currentList.length === 0 ? '暂无进行中的事件' : '', true);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    async function fetchEvents() {
+      try {
+        const res = await Promise.race([
+          fetch('https://sqbwiki.com:9330/'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
+        ]);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length < 2) throw new Error('数据格式错误');
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        serverTime = data[0];
+
+        const events = data.slice(1);
+        const now = serverTime;
+
+        const currentList = [];
+        const upcomingList = [];
+
+        events.forEach(event => {
+          const start = serverTime + event.startTime * 1000;
+          const end = serverTime + event.endTime * 1000;
+          if (now >= start && now <= end && start !== end) {
+            currentList.push(event);
+          } else if (start > now) {
+            upcomingList.push(event);
+          }
+        });
+
+        const upcomingLoaded = render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
+        const currentEmptyText = upcomingLoaded && currentList.length === 0 ? '暂无进行中的事件' : '数据获取中……';
+        render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
+
+      } catch (err) {
+        console.error("获取事件失败，使用缓存数据：", err);
+        loadFromCache();
+      }
+    }
+
+    loadFromCache();     // 页面初次加载尝试使用缓存
     fetchEvents();
     setInterval(fetchEvents, 5000);
   </script>
