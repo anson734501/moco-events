@@ -1,20 +1,28 @@
 import fetch from 'node-fetch';
-import { initializeApp, getDatabase, credential } from 'firebase-admin';
-import serviceAccount from './firebase-key.json' assert { type: "json" };
+import { initializeApp, getDatabase } from 'firebase-admin/app';
+import { cert } from 'firebase-admin/app';
+import serviceAccount from './firebase-key.json' assert { type: 'json' };
 
+// 初始化 Firebase
 initializeApp({
-  credential: credential.cert(serviceAccount),
-  databaseURL: "https://my-realtime-database-cc6b7.firebaseio.com",
+  credential: cert(serviceAccount),
+  databaseURL: "https://my-realtime-database-cc6b7.firebaseio.com"
 });
 
 const db = getDatabase();
 
-(async () => {
+const run = async () => {
   try {
-    const response = await fetch("https://xxx.xxx.com");
+    const response = await fetch("https://您的URL");
     const data = await response.json();
-    await db.ref('mocoCache').set({ data });
-  } catch (error) {
-    console.error(error);
+    await db.ref('mocoCache').set({
+      updatedAt: new Date().toISOString(),
+      data: data
+    });
+    console.log("缓存已更新");
+  } catch (err) {
+    console.error("更新失败:", err);
   }
-})();
+};
+
+run();
