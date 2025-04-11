@@ -1,27 +1,28 @@
-const fetch = require('node-fetch');
-const { initializeApp, getDatabase, credential } = require('firebase-admin');
-const serviceAccount = require('./my-realtime-database-cc6b7-firebase-adminsdk-fbsvc-xxxxxxxxxx.json'); // 注意改成你真实的文件名
+import fetch from 'node-fetch';
+import { initializeApp, getDatabase } from 'firebase-admin/app';
+import { cert } from 'firebase-admin/app';
+import serviceAccount from './firebase-key.json' assert { type: 'json' };
 
+// 初始化 Firebase
 initializeApp({
-  credential: credential.cert(serviceAccount),
+  credential: cert(serviceAccount),
   databaseURL: "https://my-realtime-database-cc6b7.firebaseio.com"
 });
 
 const db = getDatabase();
 
-(async () => {
+const run = async () => {
   try {
-    const response = await fetch("https://xxx.com/data.json"); // 换成你的数据源
+    const response = await fetch("https://您的URL");
     const data = await response.json();
-
     await db.ref('mocoCache').set({
       updatedAt: new Date().toISOString(),
-      data
+      data: data
     });
-
-    console.log("Firebase 更新成功");
+    console.log("缓存已更新");
   } catch (err) {
-    console.error("Firebase 更新失败：", err);
-    process.exit(1); // 确保 GitHub Actions 检测到失败
+    console.error("更新失败:", err);
   }
-})();
+};
+
+run();
