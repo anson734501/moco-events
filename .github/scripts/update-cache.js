@@ -2,7 +2,7 @@ const fetch = require('node-fetch');
 const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
 const { credential } = require('firebase-admin');
-const serviceAccount = require('./firebase-key.json'); // 改成你的 key 文件路径
+const serviceAccount = require('../../my-realtime-database-cc6b7-firebase-adminsdk-fbsvc-9492802d76.json'); // 改成你的 key 文件路径
 
 initializeApp({
   credential: credential.cert(serviceAccount),
