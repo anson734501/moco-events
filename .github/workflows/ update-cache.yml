@@ -1,24 +1,25 @@
-name: Update Cache
+name: Update Firebase Cache
 
 on:
   schedule:
-    - cron: "*/5 * * * *"  # 每5分钟触发一次定时任务
-  workflow_dispatch:      # 可选: 支持手动触发
+    - cron: '*/5 * * * *'  # 每 5 分钟执行一次
+  workflow_dispatch:       # 支持手动触发
 
 jobs:
-  update-cache:
+  update_cache:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js 18
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '18'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: Run Cache Update Script
+      - name: Run update script
         run: node .github/scripts/update-cache.js
