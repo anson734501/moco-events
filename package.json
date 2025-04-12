@@ -1,8 +1,0 @@
-{
-  "name": "moco-events",
-  "type": "module",
-  "dependencies": {
-    "node-fetch": "^3.3.2",
-    "firebase-admin": "^11.10.1"
-  }
-}
