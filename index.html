@@ -14,9 +14,17 @@
     th { background-color: #333; }
     tr:hover { background-color: #444; }
     .empty-row { text-align: center; color: #aaa; font-style: italic; padding: 20px; }
+    #sourceIndicator {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 10px;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
+  <div id="sourceIndicator">?</div>
   <h1>MO.CO 实时事件</h1>
   <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
 
@@ -33,7 +41,6 @@
   </table>
 
   <script>
-    // 初始化 Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCTGMl8W8Jd5HuG8RsyWJrNd-KEVjfc-KA",
       authDomain: "my-realtime-database-cc6b7.firebaseapp.com",
@@ -144,35 +151,18 @@
       return returnLoaded ? true : undefined;
     }
 
-    async function fetchEvents() {
-      try {
-        const res = await Promise.race([
-          fetch('https://sqbwiki.com:9330/'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
-        ]);
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length < 2) throw new Error("格式错误");
-
-        serverTime = data[0];
-        const events = data.slice(1);
-
-        // 写入 Firebase 缓存
-        await dbRef.set({ serverTime, events });
-
-        renderFromData(serverTime, events);
-      } catch (e) {
-        // 读取 Firebase 缓存
-        dbRef.once("value").then(snapshot => {
-          const cached = snapshot.val();
-          if (cached) {
-            serverTime = cached.serverTime;
-            renderFromData(serverTime, cached.events);
-          }
-        });
+    function renderFromData(dataSource, serverTimeValue, events) {
+      const indicator = document.getElementById("sourceIndicator");
+      if (dataSource === "接口") {
+        indicator.textContent = "0";
+        indicator.style.color = "limegreen";
+      } else {
+        indicator.textContent = "1";
+        indicator.style.color = "hotpink";
       }
-    }
 
-    function renderFromData(serverTime, events) {
+      serverTime = serverTimeValue;
+
       const now = serverTime;
       const currentList = [];
       const upcomingList = [];
@@ -190,6 +180,33 @@
       const upcomingLoaded = render(upcomingList, document.getElementById("upcomingEvents"), '数据获取中……', false, true);
       const currentEmptyText = upcomingLoaded && currentList.length === 0 ? '暂无进行中的事件' : '数据获取中……';
       render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
+    }
+
+    async function fetchEvents() {
+      try {
+        const res = await Promise.race([
+          fetch('https://sqbwiki.com:9330/'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
+        ]);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length < 2) throw new Error("格式错误");
+
+        const serverTime = data[0];
+        const events = data.slice(1);
+
+        await dbRef.set({ serverTime, events });
+        renderFromData("接口", serverTime, events);
+      } catch (e) {
+        dbRef.once("value").then(snapshot => {
+          const cached = snapshot.val();
+          if (cached) {
+            renderFromData("Firebase", cached.serverTime, cached.events || []);
+          } else {
+            document.getElementById("sourceIndicator").textContent = "?";
+            document.getElementById("sourceIndicator").style.color = "#888";
+          }
+        });
+      }
     }
 
     fetchEvents();
