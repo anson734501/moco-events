@@ -182,7 +182,7 @@
     async function fetchEvents() {
       try {
         const res = await Promise.race([
-          fetch('https://moco-proxy-6s697ahbj-ansons-projects-ebf826c6.vercel.app/api/proxy'),
+          fetch('http://localhost:3000/proxy'),
           new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
         ]);
         const data = await res.json();
