@@ -16,12 +16,20 @@
     th:nth-child(2), td:nth-child(2) { width: 120px; text-align: left; padding-left: 8px; padding-right: 8px; }
     th:nth-child(3), td:nth-child(3) { text-align: left; }
     tr:hover { background-color: #444; }
-    .empty-row td { text-align: left !important; padding-left: 10px !important; color: #aaa; font-style: italic; padding-top: 2px; padding-bottom: 2px; } /* 缩小的上下间距 */
-    #sourceIndicator { position: absolute; top: 8px; right: 10px; font-size: 12px; font-family: monospace; }
+    .empty-row td { text-align: left !important; padding-left: 10px !important; color: #aaa; font-style: italic; padding-top: 2px; padding-bottom: 2px; }
+    #sourceIndicator {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #888;
+    }
   </style>
 </head>
 <body>
-  <div id="sourceIndicator">?</div>
+  <div id="sourceIndicator"></div>
   <h1>MO.CO 实时事件</h1>
   <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
 
@@ -150,16 +158,11 @@
 
     function renderFromData(dataSource, serverTimeValue, events) {
       const indicator = document.getElementById("sourceIndicator");
-      if (dataSource === "接口") {
-        indicator.textContent = "0";
-        indicator.style.color = "limegreen";
-      } else {
-        indicator.textContent = "1";
-        indicator.style.color = "hotpink";
-      }
+      indicator.style.backgroundColor =
+        dataSource === "接口" ? "limegreen" : "red";
 
       serverTime = serverTimeValue;
-      const now = Date.now(); // 关键：用客户端当前时间判断事件是否结束
+      const now = Date.now();
 
       const currentList = [];
       const upcomingList = [];
@@ -199,8 +202,8 @@
           if (cached) {
             renderFromData("Firebase", cached.serverTime, cached.events || []);
           } else {
-            document.getElementById("sourceIndicator").textContent = "?";
-            document.getElementById("sourceIndicator").style.color = "#888";
+            const indicator = document.getElementById("sourceIndicator");
+            indicator.style.backgroundColor = "#888";
           }
         });
       }
