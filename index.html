@@ -97,11 +97,18 @@
       z-index: -1;
       pointer-events: none;
     }
+
+    .dot {
+      display: inline-block;
+      margin-left: -0.5em;
+      margin-right: -0.3em;
+    }
   </style>
 </head>
 <body>
   <h1>
-    M<span class="o-container">O<span id="sourceIndicator" class="indicator"></span></span>.
+    M<span class="o-container">O<span id="sourceIndicator" class="indicator"></span></span>
+    <span class="dot">.</span>
     C<span class="o-container">O<span id="mirrorIndicator" class="indicator"></span></span> 实时事件
   </h1>
   <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
