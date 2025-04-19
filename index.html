@@ -7,16 +7,73 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <style>
-    body { background: #1e1e1e; color: #fff; font-family: Arial, sans-serif; padding: 20px; font-size: 17px; line-height: 1.2; }
-    h1, h2 { color: #fff; font-size: 28px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; table-layout: fixed; }
-    th { background-color: #333; border-bottom: 1px solid #555; padding: 3px 6px; font-size: 16px; }
-    td { padding: 3px 6px; font-size: 16px; border-bottom: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    th:nth-child(1), td:nth-child(1) { width: 80px; text-align: right; font-family: monospace; }
-    th:nth-child(2), td:nth-child(2) { width: 120px; text-align: left; padding-left: 8px; padding-right: 8px; }
-    th:nth-child(3), td:nth-child(3) { text-align: left; }
-    tr:hover { background-color: #444; }
-    .empty-row td { text-align: left !important; padding-left: 10px !important; color: #aaa; font-style: italic; padding-top: 2px; padding-bottom: 2px; }
+    body {
+      background: #1e1e1e;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    h1, h2 {
+      color: #fff;
+      font-size: 28px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 30px;
+      table-layout: fixed;
+    }
+
+    th {
+      background-color: #333;
+      border-bottom: 1px solid #555;
+      padding: 3px 6px;
+      font-size: 16px;
+    }
+
+    td {
+      padding: 3px 6px;
+      font-size: 16px;
+      border-bottom: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th:nth-child(1), td:nth-child(1) {
+      width: 80px;
+      text-align: right;
+      font-family: monospace;
+    }
+
+    th:nth-child(2), td:nth-child(2) {
+      width: 120px;
+      text-align: left;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    th:nth-child(3), td:nth-child(3) {
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #444;
+    }
+
+    .empty-row td {
+      text-align: left !important;
+      padding-left: 10px !important;
+      color: #aaa;
+      font-style: italic;
+      padding-top: 2px;
+      padding-bottom: 2px;
+    }
 
     .o-container {
       position: relative;
@@ -29,10 +86,10 @@
       font-size: inherit;
     }
 
-    .o-container > #sourceIndicator {
+    .indicator {
       position: absolute;
       top: 22%;
-      left: 15%; /* 微调位置向左 */
+      left: 15%;
       width: 56%;
       height: 56%;
       border-radius: 50%;
@@ -44,7 +101,8 @@
 </head>
 <body>
   <h1>
-    M<span class="o-container">O<span id="sourceIndicator"></span></span>.CO 实时事件
+    M<span class="o-container">O<span id="sourceIndicator" class="indicator"></span></span>.
+    C<span class="o-container">O<span id="mirrorIndicator" class="indicator"></span></span> 实时事件
   </h1>
   <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
 
@@ -173,7 +231,10 @@
 
     function renderFromData(dataSource, serverTimeValue, events) {
       const indicator = document.getElementById("sourceIndicator");
-      indicator.style.backgroundColor = dataSource === "接口" ? "limegreen" : "red";
+      const indicator2 = document.getElementById("mirrorIndicator");
+      const color = dataSource === "接口" ? "limegreen" : "red";
+      indicator.style.backgroundColor = color;
+      indicator2.style.backgroundColor = color;
 
       serverTime = serverTimeValue;
       const now = Date.now();
@@ -216,8 +277,8 @@
           if (cached) {
             renderFromData("Firebase", cached.serverTime, cached.events || []);
           } else {
-            const indicator = document.getElementById("sourceIndicator");
-            indicator.style.backgroundColor = "#888";
+            document.getElementById("sourceIndicator").style.backgroundColor = "#888";
+            document.getElementById("mirrorIndicator").style.backgroundColor = "#888";
           }
         });
       }
