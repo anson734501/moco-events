@@ -17,20 +17,35 @@
     th:nth-child(3), td:nth-child(3) { text-align: left; }
     tr:hover { background-color: #444; }
     .empty-row td { text-align: left !important; padding-left: 10px !important; color: #aaa; font-style: italic; padding-top: 2px; padding-bottom: 2px; }
-    #sourceIndicator {
+
+    .o-container {
+      position: relative;
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      line-height: 1;
+      font-weight: bold;
+      font-family: Arial, sans-serif;
+      font-size: inherit;
+    }
+
+    .o-container > #sourceIndicator {
       position: absolute;
-      top: 8px;
-      right: 10px;
-      width: 12px;
-      height: 12px;
+      top: 22%;
+      left: 15%; /* 微调位置向左 */
+      width: 56%;
+      height: 56%;
       border-radius: 50%;
       background-color: #888;
+      z-index: -1;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <div id="sourceIndicator"></div>
-  <h1>MO.CO 实时事件</h1>
+  <h1>
+    M<span class="o-container">O<span id="sourceIndicator"></span></span>.CO 实时事件
+  </h1>
   <p id="timeNow" style="color: #bbb; margin-top: -10px; font-family: monospace;"></p>
 
   <h2>🟢 当前事件</h2>
@@ -158,8 +173,7 @@
 
     function renderFromData(dataSource, serverTimeValue, events) {
       const indicator = document.getElementById("sourceIndicator");
-      indicator.style.backgroundColor =
-        dataSource === "接口" ? "limegreen" : "red";
+      indicator.style.backgroundColor = dataSource === "接口" ? "limegreen" : "red";
 
       serverTime = serverTimeValue;
       const now = Date.now();
