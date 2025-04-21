@@ -268,7 +268,7 @@
     async function fetchEvents() {
       try {
         const res = await Promise.race([
-          fetch('http://115.238.252.171:11485/proxy'),
+          fetch('https://115.238.252.171:11485/proxy'),
           new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
         ]);
         const data = await res.json();
