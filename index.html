@@ -265,37 +265,32 @@
       render(currentList, document.getElementById("currentEvents"), currentEmptyText, true);
     }
 
-async function fetchEvents() {
-  try {
-    const res = await Promise.race([
-      fetch('https://4876-115-238-252-171.ngrok-free.app/proxy', {
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
-      }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
-    ]);
-    
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length < 2) throw new Error("格式错误");
+    async function fetchEvents() {
+      try {
+        const res = await Promise.race([
+          fetch('http://115.238.252.171:11485/proxy'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 5000))
+        ]);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length < 2) throw new Error("格式错误");
 
-    const serverTime = data[0];
-    const events = data.slice(1);
+        const serverTime = data[0];
+        const events = data.slice(1);
 
-    await dbRef.set({ serverTime, events });
-    renderFromData("接口", serverTime, events);
-  } catch (e) {
-    dbRef.once("value").then(snapshot => {
-      const cached = snapshot.val();
-      if (cached) {
-        renderFromData("Firebase", cached.serverTime, cached.events || []);
-      } else {
-        document.getElementById("sourceIndicator").style.backgroundColor = "#888";
-        document.getElementById("mirrorIndicator").style.backgroundColor = "#888";
+        await dbRef.set({ serverTime, events });
+        renderFromData("接口", serverTime, events);
+      } catch (e) {
+        dbRef.once("value").then(snapshot => {
+          const cached = snapshot.val();
+          if (cached) {
+            renderFromData("Firebase", cached.serverTime, cached.events || []);
+          } else {
+            document.getElementById("sourceIndicator").style.backgroundColor = "#888";
+            document.getElementById("mirrorIndicator").style.backgroundColor = "#888";
+          }
+        });
       }
-    });
-  }
-}
+    }
 
     fetchEvents();
     setInterval(fetchEvents, 5000);
