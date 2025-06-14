@@ -227,15 +227,9 @@
 
           const tr = document.createElement("tr");
           const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
-          const isUnknown = mapName.includes("未知") || eventName.includes("未知");
-          const rowStyle = isUnknown ? "color:#888;" : "";
-
-          const nameCell = isRed
-            ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>`
-            : `<td>${eventName}</td>`;
+          const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
           const timeCell = idx === 0 ? `<td>${group.label}</td>` : `<td></td>`;
           tr.innerHTML = `${timeCell}<td>${mapName}</td>${nameCell}`;
-          tr.setAttribute("style", rowStyle);
           container.appendChild(tr);
         });
 
