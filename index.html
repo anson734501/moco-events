@@ -55,11 +55,11 @@
       width: 88px;
       text-align: left;
       padding-left: 20px;
-      padding-right: 1px;
+      padding-right: 10px;
     }
 
     th:nth-child(3), td:nth-child(3) {
-      padding-left: 1px;
+      padding-left: 10px;
       text-align: left;
     }
 
@@ -211,21 +211,31 @@
 
       grouped.forEach(group => {
         group.events.forEach((event, idx) => {
-          const locId = event.location.split("-")[1] - 900000;
-          const mapName = locations[locId] || `未知地图(${event.location})`;
+          const rawLoc = event.location.split("-")[1];
+          const locId = rawLoc - 900000;
+          const mapName = locations[locId] || "未知" + rawLoc.slice(-3);
+
           const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
-          let eventName = "未知事件";
+          let eventName;
           if (monsterId !== null) {
-            eventName = eventNames[monsterId] || `未知事件 (${monsterId})`;
-          } else if (event.type && eventNames[event.type]) {
-            eventName = eventNames[event.type];
+            eventName = eventNames[monsterId] || "未知" + monsterId;
+          } else if (event.type) {
+            eventName = eventNames[event.type] || "未知" + event.type;
+          } else {
+            eventName = "未知";
           }
 
           const tr = document.createElement("tr");
           const isRed = eventName.includes('高能警报') || eventName.includes('混沌');
-          const nameCell = isRed ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>` : `<td>${eventName}</td>`;
+          const isUnknown = mapName.includes("未知") || eventName.includes("未知");
+          const rowStyle = isUnknown ? "color:#888;" : "";
+
+          const nameCell = isRed
+            ? `<td><span style='color:red;font-weight:bold;'>${eventName}</span></td>`
+            : `<td>${eventName}</td>`;
           const timeCell = idx === 0 ? `<td>${group.label}</td>` : `<td></td>`;
           tr.innerHTML = `${timeCell}<td>${mapName}</td>${nameCell}`;
+          tr.setAttribute("style", rowStyle);
           container.appendChild(tr);
         });
 
