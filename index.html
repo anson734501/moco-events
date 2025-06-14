@@ -213,16 +213,16 @@
         group.events.forEach((event, idx) => {
           const rawLoc = event.location.split("-")[1];
           const locId = rawLoc - 900000;
-          const mapName = locations[locId] || "未知" + rawLoc.slice(-3);
+          const mapName = locations[locId] || rawLoc.slice(-3);
 
           const monsterId = event.unkArray[1] ? event.unkArray[1] - 800000 : null;
           let eventName;
           if (monsterId !== null) {
-            eventName = eventNames[monsterId] || "未知" + monsterId;
+            eventName = eventNames[monsterId] || String(monsterId);
           } else if (event.type) {
-            eventName = eventNames[event.type] || "未知" + event.type;
+            eventName = eventNames[event.type] || String(event.type);
           } else {
-            eventName = "未知";
+            eventName = "";
           }
 
           const tr = document.createElement("tr");
